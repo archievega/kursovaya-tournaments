@@ -32,7 +32,13 @@ class RegistrateForm():
     password: str = Form()
     role: Role = Form()
 
+
 class PublicProfile(BaseModel):
+    id: UUID4
     icon_url: AnyUrl | None = None
     username: str 
-    description: str
+    description: str | None = None
+    scores: int = 0
+
+    class Config:
+        from_attributes = True

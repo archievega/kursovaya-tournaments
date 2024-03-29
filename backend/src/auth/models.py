@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import TEXT, ENUM as PgEnum
+from sqlalchemy.dialects.postgresql import TEXT, ENUM as PgEnum, INTEGER
 
 from src.database import Base
 from src.auth.schemas import Role
@@ -28,6 +28,12 @@ class Profile(Base):
         TEXT(),
         nullable=True    
     )
+    scores: Mapped[int] = mapped_column(
+        INTEGER(),
+        default=0
+    )
     role: Mapped[Role] = mapped_column(
+        
         PgEnum(Role, name="role")    
     )
+    

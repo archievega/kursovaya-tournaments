@@ -20,7 +20,8 @@ async def create_profile(
         insert(Profile)
         .values({Profile.id: create_profile.id,
                  Profile.username: create_profile.username,
-                 Profile.role: create_profile.role})
+                 Profile.role: create_profile.role,
+                 Profile.scores: 0})
         .returning(Profile)
     )
     profile: Profile = (await session.execute(stmt)).scalar_one()
