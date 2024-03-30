@@ -47,13 +47,13 @@ class Match(Base):
         nullable=True
     )
     player_1: Mapped["Profile"] = relationship(lazy="selectin", foreign_keys=[player_1_id])
-    player_1_scores: Mapped[int] = mapped_column(INTEGER(), nullable=True)
+    player_1_scores: Mapped[int] = mapped_column(INTEGER(), default=0)
     player_2_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("profile.id"),
         nullable=True
     )
     player_2: Mapped[Profile] = relationship(lazy="selectin", foreign_keys=[player_2_id])
-    player_2_scores: Mapped[int] = mapped_column(INTEGER(), nullable=True)
+    player_2_scores: Mapped[int] = mapped_column(INTEGER(), default=0)
 
     winner_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("profile.id"),
@@ -84,6 +84,7 @@ class Tournament(Base):
     matches: Mapped[list[Match]] = relationship(back_populates="tournament", lazy="selectin")
     address: Mapped[str] = mapped_column(TEXT())
     winner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("profile.id"), nullable=True)
+    winner: Mapped[Profile] = relationship(lazy="selectin", foreign_keys=[winner_id])
     status: Mapped[TournamentStatus] = mapped_column(
         PgEnum(TournamentStatus, name="tournament_status"),
         default=TournamentStatus.WAITING

@@ -1,8 +1,6 @@
 import uuid
-from datetime import datetime
 
-from sqlalchemy import ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import TEXT, ENUM as PgEnum, INTEGER
 
 from src.database import Base

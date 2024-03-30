@@ -5,6 +5,7 @@ from src.auth.models import Profile
 from src.auth.schemas import CreateProfile
 from sqlalchemy import insert
 
+
 async def get_profile(
         user_id: UUID,
         session: AsyncSession
@@ -28,4 +29,3 @@ async def create_profile(
     await session.flush()
     await session.commit()
     return profile
-

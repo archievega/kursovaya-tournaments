@@ -134,7 +134,7 @@ async def create_matches(
 async def get_tournaments(
     session: AsyncSession = Depends(get_async_session)
 ):
-    tournaments = await crud.get_not_ended_tournaments(session)
+    tournaments = await crud.get_tournaments(session)
     tournament_schemas = [TournamentBase.model_validate(tournament) for tournament in tournaments]      
     return tournament_schemas
 
@@ -248,6 +248,19 @@ async def get_tournament_players(
 ) -> TournamentPlayers:
     tournament_players = TournamentPlayers.model_validate(tournament)
     return tournament_players
+
+
+@router.post(
+        "/{tournament_id}/matches",
+        response_model=list[MatchBase]
+)
+async def get_matches(
+    tournament: Tournament = Depends(valid_tournament),
+    session: AsyncSession = Depends(get_async_session)  
+):
+    matches = await crud.get_matches(tournament, session)
+    matches_schemas = [MatchBase.model_validate(match) for match in matches]
+    return matches_schemas
 
 
 @router.post(

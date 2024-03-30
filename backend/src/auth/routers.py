@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from fastapi.security import OAuth2PasswordRequestForm
 from src.database import get_async_session
@@ -65,9 +65,10 @@ async def register(
                 role=form_data.role)
             await create_profile(user_data, session)
             return {
-                "access_token":supabase_session.session.access_token,
-                "refresh_token":supabase_session.session.refresh_token
+                "access_token": supabase_session.session.access_token,
+                "refresh_token": supabase_session.session.refresh_token
             }
+        raise HTTPException(status.HTTP_406_NOT_ACCEPTABLE, "Wrong credentials")
     except Exception as e:
         print(e)
         raise HTTPException(status.HTTP_406_NOT_ACCEPTABLE, "Wrong credentials")

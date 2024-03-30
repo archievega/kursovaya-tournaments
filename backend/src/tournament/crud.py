@@ -4,7 +4,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.tournament.models import Tournament, Match, \
                                   Tournament_Player
-from sqlalchemy import insert, select, or_
+from sqlalchemy import select
 from src.database import get_async_session
 from src.tournament.utils import TournamentStatus
 from src.tournament.schemas import CreateTournament, SetMatchScore
@@ -12,12 +12,10 @@ from src.auth.schemas import AuthUser
 from src.auth.crud import get_profile
 
 
-async def get_not_ended_tournaments(
+async def  get_tournaments(
         session: AsyncSession = Depends(get_async_session)
 ) -> list[Tournament]:
-    query = (select(Tournament)
-             .where(or_(Tournament.status == TournamentStatus.RUNNING,
-                        Tournament.status == TournamentStatus.WAITING)))
+    query = (select(Tournament))
     tournaments = await session.execute(query)
     return list(tournaments.scalars().all())
 
@@ -73,12 +71,12 @@ async def create_match(
             round=round,
             player_1_scores=1,
             winner_id=player_1_id)
-
-    match = Match(
-        tournament_id=tournament.id,
-        player_1_id=player_1_id,
-        round=round,
-        player_2_id=player_2_id)
+    else:
+        match = Match(
+                tournament_id=tournament.id,
+                player_1_id=player_1_id,
+                round=round,
+                player_2_id=player_2_id)
     session.add(match)
     await session.commit()
     await session.refresh(match)
@@ -145,7 +143,20 @@ async def set_score(
     else:
         match.winner_id = match.player_1_id
     await session.commit()
+    await session.refresh(match)
     return match
+
+
+async def get_matches(
+        tournament: Tournament,
+        session: AsyncSession = Depends(get_async_session)
+) -> list[Match]:
+    stmt = (
+        select(Match)
+        .where(Match.tournament_id == tournament.id)
+        )
+    matches = await session.execute(stmt)
+    return list(matches.scalars().all())
 
 
 async def get_round_matches(
