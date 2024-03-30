@@ -30,7 +30,7 @@ class MatchBase(BaseModel):
 class Tournament(TournamentBase):
     matches: list["MatchBase"] = []
     description: str | None = None
-    members_count: int = 0
+    players_count: int = len("")
 
 
 class TournamentPlayers(TournamentBase):

@@ -172,6 +172,7 @@ async def get_tournament(
 ):
     print(tournament.matches)
     tournament_schema = TournamentSchema.model_validate(tournament)
+    tournament_schema.players_count = len(tournament.players)
     return tournament_schema
 
 @router.post(
@@ -242,7 +243,7 @@ async def leave(
             detail="Wrong match condition")
     
 
-@router.post("/{tournament_id}/players")
+@router.get("/{tournament_id}/players")
 async def get_tournament_players(
     tournament: Tournament = Depends(valid_tournament),
 ) -> TournamentPlayers:
