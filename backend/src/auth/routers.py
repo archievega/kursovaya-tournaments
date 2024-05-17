@@ -1,17 +1,29 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import (
+    APIRouter,
+    Depends,
+    Response,
+    HTTPException,
+    status
+)
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from src.auth.client import (
+    auth_backend,
+    fastapi_users,
+    get_jwt_strategy,
+    get_refresh_jwt_strategy,
+    UserManager,
+    get_user_manager
+)
 
-from fastapi.security import OAuth2PasswordRequestForm
-from src.database import get_async_session
+from fastapi_users.authentication import JWTStrategy
 
-from gotrue.types import AuthResponse
-from supabase.client import Client
-from src.auth.client import get_supabase_client
-from src.auth.schemas import Token, RegistrateForm, CreateProfile
-from src.auth.crud import create_profile
-from uuid import UUID
-
+from src.auth.schemas import (
+    UserCreate,
+    UserRead,
+    UserUpdate,
+    PublicUser,
+    RefreshTokenSchema
+)
 
 
 router = APIRouter(
@@ -20,55 +32,26 @@ router = APIRouter(
 )
 
 
-@router.post(
-        "/login",
-        status_code=status.HTTP_200_OK,
-        response_model = Token
+@router.post("/token")
+async def refresh_jwt(
+    refresh_token: RefreshTokenSchema,
+    jwt_strategy: JWTStrategy = Depends(get_jwt_strategy),
+    refresh_jwt_strategy: JWTStrategy = Depends(get_refresh_jwt_strategy),
+    mgr: UserManager = Depends(get_user_manager)
+):
+    user = await refresh_jwt_strategy.read_token(refresh_token.refresh_token, mgr)
+    if user:
+        return await auth_backend.login(jwt_strategy, user)
+
+
+router.include_router(
+    fastapi_users.get_auth_router(auth_backend)
 )
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    supabase: Client = Depends(get_supabase_client)
-):
-    try:
-        supabase_session: AuthResponse = supabase.auth.sign_in_with_password(
-            {"email": form_data.username,
-             "password": form_data.password}
-        )
-        if supabase_session.session:
-            return Token(
-                access_token=supabase_session.session.access_token,
-                refresh_token=supabase_session.session.refresh_token
-            )
-    except Exception as e:
-        print(e)
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong credentials")
 
+router.include_router(
+    fastapi_users.get_verify_router(UserRead)
+)
 
-@router.post(
-        "/register",
-        status_code=status.HTTP_201_CREATED)
-async def register(
-    form_data: RegistrateForm,
-    supabase: Client = Depends(get_supabase_client),
-    session: AsyncSession = Depends(get_async_session)
-):
-    try:
-        supabase_session: AuthResponse = supabase.auth.sign_up(
-            {"email": form_data.email,
-            "password": form_data.password}
-        )
-        if supabase_session.session:
-            user_id = UUID(supabase_session.user.id)
-            user_data = CreateProfile(
-                id=user_id,
-                username=form_data.username,
-                role=form_data.role)
-            await create_profile(user_data, session)
-            return {
-                "access_token": supabase_session.session.access_token,
-                "refresh_token": supabase_session.session.refresh_token
-            }
-        raise HTTPException(status.HTTP_406_NOT_ACCEPTABLE, "Wrong credentials")
-    except Exception as e:
-        print(e)
-        raise HTTPException(status.HTTP_406_NOT_ACCEPTABLE, "Wrong credentials")
+router.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+)

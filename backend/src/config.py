@@ -14,14 +14,9 @@ class Settings(BaseSettings):
 
     DB_NAME: str = "postgres"
 
-    DB_USER: str = "postgres"
+    DB_USER: str = "username"
 
-    DB_PASS: str
-
-    TEST_DB_NAME: str
-
-    SUPABASE_URL: str = "http://213.171.3.136:8000"
-    SUPABASE_KEY: str 
+    DB_PASS: str = "password"
 
     class Config:
         env_file = ".env"

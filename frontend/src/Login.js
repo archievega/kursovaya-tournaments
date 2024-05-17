@@ -1,63 +1,66 @@
-import { useState } from "react"
-import { useCookies } from 'react-cookie';
-
+import { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const [token, setToken] = useState();
-    const [cookies, setCookie] = useCookies(['token']);
-    const [formdata, setFormdata] = useState({
-        password: 'asfa21213fsasadsf',
-        username: 'sdfdsdads11c1sgs@gmail.com',
-    })
-    const handleSubmit = () => {
-        const url = 'http://213.171.3.136/api/v1/auth/login';
+    const [formData, setFormData] = useState({ username: 'user@example.com', password: 'stringstring' });
+    const navigate = useNavigate();
 
-        // const jsonData = JSON.stringify(formdata);
-        // let a = JSON.stringify({ username: "sss33ss@gmail.com", email: "sss33ss@gmail.com", password: "sssss@gmail.com", role: "PLAYER" })
-        // alert(a);
-        var formBody = [];
-        for (var property in formdata) {
-            var encodedKey = encodeURIComponent(property);
-            console.log(encodedKey);
-            var encodedValue = encodeURIComponent(formdata[property]);
-            formBody.push(encodedKey + "=" + encodedValue);
-        }
-        console.log(formdata);
-        formBody = formBody.join("&");
-        fetch(url, {
-            method: 'POST',
-            body: formBody,
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        const url = 'http://localhost:1234/api/v1/auth/login';
+
+        const formBody = Object.keys(formData).map(key => {
+            const encodedKey = encodeURIComponent(key);
+            const encodedValue = encodeURIComponent(formData[key]);
+            return `${encodedKey}=${encodedValue}`;
+        }).join("&");
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formBody,
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                }
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Something went wrong');
             }
-        })
-            .then(response => response.json())
-            .then(data => {
-                // setToken(JSON.stringify(data['access_token']));
-                localStorage.setItem('token', JSON.stringify(data['access_token']))
-                window.location.href = '/tournaments'
-            })
-            .catch((error) => {
-                console.error('Error:', error.message);
-                // Handle other errors (e.g., network issues)
-            })
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('refreshToken', data.refresh_token);
+            localStorage.setItem('user_id', data.user_id);
+            navigate('/tournaments');
+        } catch (error) {
+            console.error('Login Error:', error.message);
+        }
+    };
 
-    }
     return (
-        <>
-            <div class="login-page">
-                <div class="form">
-                    <form class="login-form" id="login-form">
-                        <input type="email" placeholder="электронная почта" value={formdata.username} onChange={(e) => setFormdata({ ...formdata, email: e.target.value })} />
-                        <input type="password" placeholder="пароль (не менее 6 символов)" value={formdata.password} onChange={(e) => setFormdata({ ...formdata, password: e.target.value })} />
-                        <button type="button" onClick={handleSubmit}>login</button>
-                        <p class="message">Not registered? <a href="/registration">Create an account</a></p>
-                    </form>
-                </div>
-            </div >
-        </>
-    )
-}
+        <div className="login-page">
+            <div className="form">
+                <form className="login-form" onSubmit={handleSubmit}>
+                    <input
+                        type="email"
+                        placeholder="электронная почта"
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    />
+                    <input
+                        type="password"
+                        placeholder="пароль (не менее 8символов)"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    />
+                    <button type="submit">login</button>
+                    <p className="message">
+                        Не зарегистрированы? <a href="/registration">Создать аккаунт</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    );
+};
 
-export default Login
+export default Login;

@@ -1,68 +1,72 @@
-import { useState } from "react"
-import { useCookies } from 'react-cookie';
-import User from './User'
-
+import { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 
 const Registration = () => {
-    const [token, setToken] = useState();
-    const [cookies, setCookie] = useCookies(['token']);
-    const [formdata, setFormdata] = useState({
-        username: 'sadf122casasd',
-        password: 'asfa21213fsasadsf',
-        email: 'sdfdsdads11c1sgs@gmail.com',
-        role: 'PLAYER',
-    })
-    const handleSubmit = () => {
-        const url = 'http://213.171.3.136/api/v1/auth/register';
-        const getFormDataAsJson = () => {
-            const { username, password, email, role } = formdata;
-            // return ({ username, password, email, role });
-            return JSON.stringify({ username, password, email, role });
-        };
-        const jsonData = getFormDataAsJson();
-        // const jsonData = JSON.stringify(formdata);
-        // let a = JSON.stringify({ username: "sss33ss@gmail.com", email: "sss33ss@gmail.com", password: "sssss@gmail.com", role: "PLAYER" })
-        // alert(a);
-        console.log(jsonData);
-        fetch(url, {
-            method: 'POST',
-            body: jsonData,
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        username: '',
+        email: '',
+        password: ''
+    });
+
+    const handleSubmit = async () => {
+        const url = 'http://127.0.0.1:1234/api/v1/auth/register';
+
+        const jsonData = JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            username: formData.username
+        });
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: jsonData
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail);
             }
-        })
-            .then(response => response.json())
-            .then(data => {
-                // setToken(JSON.stringify(data['access_token']));
-                localStorage.setItem('token', JSON.stringify(data['access_token']))
-                alert('token saved');
-                alert(localStorage.getItem('token'))
+            
+            navigate('/login');
 
-            })
-            .catch((error) => {
-                console.error('Error:', error.message);
-                // Handle other errors (e.g., network issues)
-            })
-
-    }
+        } catch (error) {
+            alert('Registration failed: ' + error.message);
+        }
+    };
 
     return (
-        <>
-            <div class="login-page">
-                <div class="form">
-                    <form class="register-form">
-                        <input type="text" placeholder="имя пользователя" value={formdata.username} onChange={(e) => setFormdata({ ...formdata, username: e.target.value })} />
-                        <input type="password" placeholder="пароль (не менее 6 символов)" value={formdata.password} onChange={(e) => setFormdata({ ...formdata, password: e.target.value })} />
-                        <input type="email" placeholder="электронная почта" value={formdata.email} onChange={(e) => setFormdata({ ...formdata, email: e.target.value })} />
-                        <input type="text" placeholder="роль" value={formdata.role} onChange={(e) => setFormdata({ ...formdata, role: e.target.value })} />
-                        <button type="button" onClick={handleSubmit}>create</button>
-                        <p class="message">Already registered? <a href="/Login">Sign In</a></p>
-                    </form>
-                </div>
-            </div >
-        </>
-    )
+        <div className="login-page">
+            <div className="form">
+                <form className="register-form">
+                    <input
+                        type="text"
+                        placeholder="имя пользователя"
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    />
+                    <input
+                        type="email"
+                        placeholder="электронная почта"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                    <input
+                        type="password"
+                        placeholder="пароль (не менее 6 символов)"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    />
+                    <button type="button" onClick={handleSubmit}>create</button>
+                    <p className="message">Already registered? <a href="/Login">Sign In</a></p>
+                </form>
+            </div>
+        </div>
+    );
 }
 
-export default Registration
+export default Registration;

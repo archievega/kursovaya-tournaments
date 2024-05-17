@@ -1,44 +1,35 @@
-from pydantic import BaseModel, UUID4, AnyUrl
-from pydantic.dataclasses import dataclass
-from fastapi import Form
-from enum import Enum
+from uuid import UUID
+from pydantic import BaseModel, UUID4
 
-class Role(Enum):
-    PLAYER: str = "PLAYER"
-    MANAGER: str = "MANAGER"
+from fastapi_users import schemas
 
 
-class Token(BaseModel):
+class PublicUser(BaseModel):
+    id: UUID4
+    username: str
+    scores: int = 0
+    class Config:
+        from_attributes = True
+
+
+class BearerResponseRefresh(BaseModel):
     access_token: str
+    refresh_token: str
+    user_id: str
+    token_type: str
+
+
+class RefreshTokenSchema(BaseModel):
     refresh_token: str
 
 
-class AuthUser(BaseModel):
-    id: UUID4
-    role: Role
-    class Config:
-        from_attributes = True
-
-class CreateProfile(BaseModel):
-    id: UUID4
-    username: str 
-    role: Role
+class UserRead(schemas.BaseUser[UUID], PublicUser):
+    pass
 
 
-@dataclass
-class RegistrateForm():
-    username: str = Form()
-    email: str = Form()
-    password: str = Form()
-    role: Role = Form()
+class UserCreate(schemas.BaseUserCreate):
+    username: str
 
 
-class PublicProfile(BaseModel):
-    id: UUID4
-    icon_url: AnyUrl | None = None
-    username: str 
-    description: str | None = None
-    scores: int = 0
-
-    class Config:
-        from_attributes = True
+class UserUpdate(schemas.CreateUpdateDictModel):
+    username: str

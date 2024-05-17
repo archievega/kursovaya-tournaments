@@ -4,40 +4,45 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.database import get_async_session
 
-from src.auth.utils import get_current_user
-from src.auth.models import Profile
-from src.auth.schemas import AuthUser, Role
+from src.auth.client import current_active_user
+from src.auth.models import User
+from src.auth.schemas import PublicUser
+
 from src.tournament import crud
-from src.tournament.schemas import TournamentBase, \
-                                   CreateTournament, \
-                                   CreateTournamentResponse, \
-                                   Tournament as TournamentSchema, \
-                                   TournamentPlayer as Tour_Player, \
-                                   TournamentPlayers, SetMatchScore, \
-                                   MatchBase 
-from src.tournament.models import Tournament, Match
+from src.tournament.schemas import (
+    TournamentBase,
+    CreateTournament,
+    CreateTournamentResponse,
+    Tournament as TournamentSchema,
+    SetMatchScore, MatchBase
+)
+from src.tournament.models import Tournament, Match, Tournament_User
 from src.tournament.utils import TournamentStatus
 from uuid import UUID
 
 
 router = APIRouter(
-    prefix="/tournament",
-    tags=["tournament"]
+    prefix="/tournaments",
+    tags=["tournament"],
+    dependencies=[Depends(current_active_user)]
 )
 
-async def valid_manager(user: AuthUser = Depends(get_current_user)):
-    if user.role == Role.MANAGER:
-        return user
-    else:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="You are not a manager")
+
+async def valid_uuid(uuid: str):
+    try:
+        return UUID(uuid)
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tournament not found"
+        )
 
 
 async def valid_tournament(
         tournament_id: str,
         session: AsyncSession = Depends(get_async_session)
 ) -> Tournament:
-    tournament = await crud.get_tournament(UUID(tournament_id), session)
+    tournament = await crud.get_tournament(await valid_uuid(tournament_id), session)
     if not tournament:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -56,9 +61,9 @@ async def valid_match(
         if match.tournament_id == UUID(tournament_id):
             return match
     raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Match not found"
-            )
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Match not found"
+    )
 
 
 async def is_round_ended(
@@ -69,19 +74,18 @@ async def is_round_ended(
     matches = await crud.get_round_matches(
         round,
         tournament,
-        session)
+        session
+    )
     ended = True
     for match in matches:
-        if match.winner_id:
-            pass
-        else:
+        if not match.winner_id:
             ended = False
             break
     return ended
 
 
 async def valid_tournament_owner(
-        user: AuthUser = Depends(get_current_user),
+        user: User = Depends(current_active_user),
         tournament: Tournament = Depends(valid_tournament)
 ) -> Tournament:
     if tournament.manager_id == user.id:
@@ -94,12 +98,13 @@ async def valid_tournament_owner(
 async def get_round_winners(
     round: int,
     tournament: Tournament,
-    session: AsyncSession = Depends(get_async_session)        
-) -> list[Profile]:
+    session: AsyncSession     
+) -> list[User]:
     matches = await crud.get_round_matches(
         round,
         tournament,
-        session)
+        session
+    )
     winners = []
     for match in matches:
         winners.append(match.winner)
@@ -107,7 +112,7 @@ async def get_round_winners(
 
 
 async def create_matches(
-        players: list[Profile],
+        players: list[Tournament_User],
         round: int,
         tournament: Tournament,
         session: AsyncSession = Depends(get_async_session)
@@ -115,8 +120,8 @@ async def create_matches(
     players_count = len(players)
     for i in range(0, players_count-1, 2):
         await crud.create_match(
-            players[i].id,
-            players[i+1].id,
+            players[i].player_id,
+            players[i+1].player_id,
             round,
             tournament,
             session)
@@ -132,11 +137,24 @@ async def create_matches(
 
 @router.get("/")
 async def get_tournaments(
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
 ):
     tournaments = await crud.get_tournaments(session)
     tournament_schemas = [TournamentBase.model_validate(tournament) for tournament in tournaments]      
     return tournament_schemas
+
+
+@router.get(
+        "/leaderboard",
+        response_model=list[PublicUser]
+)
+async def get_leaderboard(
+    session: AsyncSession = Depends(get_async_session)
+):
+    users = await crud.get_leaderboard(session)
+    users_schemas = [PublicUser.model_validate(user) for user in users]
+    return users_schemas
 
 
 @router.post(
@@ -146,20 +164,11 @@ async def get_tournaments(
 )
 async def create_tournament(
     tournament_data: CreateTournament,
-    user: AuthUser = Depends(valid_manager),
+    user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session)
 ) -> Tournament:
-    tournament = await crud.create_tournament(user.id, tournament_data, session)
+    tournament = await crud.create_tournament(user, tournament_data, session)
     return tournament
-
-
-async def end_tournament(
-    winner_id: UUID,
-    tournament: Tournament,
-    session: AsyncSession = Depends(get_async_session)
-):
-    await crud.end_tournament(winner_id, tournament, session)
-    
 
 
 @router.get(
@@ -167,16 +176,16 @@ async def end_tournament(
         response_model=TournamentSchema
 )
 async def get_tournament(
-    tournament: Tournament = Depends(valid_tournament),
-    session: AsyncSession = Depends(get_async_session)
+    tournament: Tournament = Depends(valid_tournament)
 ):
-    print(tournament.matches)
     tournament_schema = TournamentSchema.model_validate(tournament)
     tournament_schema.players_count = len(tournament.players)
     return tournament_schema
 
+
 @router.post(
-    "/{tournament_id}/start"
+    "/{tournament_id}/start",
+    response_model=TournamentSchema
 )
 async def start_tournament(
     tournament: Tournament = Depends(valid_tournament_owner),
@@ -191,30 +200,30 @@ async def start_tournament(
                          0,
                          tournament,
                          session)
-    await crud.start_tournament(tournament, session)
-    return {"status": "started"}
+    tournament = await crud.start_tournament(tournament, session)
+    return TournamentSchema.model_validate(tournament)
 
 
 @router.post(
     "/{tournament_id}/join",
-    response_model=Tour_Player
+    response_model=TournamentSchema
 )
 async def join_tournament(
     tournament: Tournament = Depends(valid_tournament),
-    user: AuthUser = Depends(get_current_user),
+    user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     if tournament.status == TournamentStatus.WAITING:
-        if await crud.get_tournament_player(user, tournament, session):
+        if await crud.get_tournament_user(user, tournament, session):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="You already joined")
-        tour_player = await crud.join_tournament(user, tournament, session)
-        return Tour_Player.model_validate(tour_player)
+        tournament = await crud.join_tournament(user, tournament, session)
+        return TournamentSchema.model_validate(tournament)
     else:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Wrong match condition")
+            detail="Wrong tournament condition")
 
 
 @router.post(
@@ -223,7 +232,7 @@ async def join_tournament(
 )
 async def leave(
     tournament: Tournament = Depends(valid_tournament),
-    user: AuthUser = Depends(get_current_user),
+    user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session)
 ):
     if tournament.status == TournamentStatus.WAITING:
@@ -243,45 +252,41 @@ async def leave(
             detail="Wrong match condition")
     
 
-@router.get("/{tournament_id}/players")
-async def get_tournament_players(
-    tournament: Tournament = Depends(valid_tournament),
-) -> TournamentPlayers:
-    tournament_players = TournamentPlayers.model_validate(tournament)
-    return tournament_players
-
-
-@router.post(
+@router.get(
         "/{tournament_id}/matches",
-        response_model=list[MatchBase]
+        response_model=TournamentSchema
 )
 async def get_matches(
     tournament: Tournament = Depends(valid_tournament),
     session: AsyncSession = Depends(get_async_session)  
 ):
-    matches = await crud.get_matches(tournament, session)
-    matches_schemas = [MatchBase.model_validate(match) for match in matches]
-    return matches_schemas
+    return TournamentSchema.model_validate(tournament)
 
 
 @router.post(
-        "/{tournament_id}/match/{match_id}",
-        response_model=MatchBase)
+        "/{tournament_id}/matches/{match_id}/set",
+        response_model=MatchBase
+)
 async def set_score(
     match_score: SetMatchScore,
     match: Match = Depends(valid_match),
     tournament: Tournament = Depends(valid_tournament_owner),
     session: AsyncSession = Depends(get_async_session)
 ):
+    if match.winner:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Match ended already"
+        )
     match = await crud.set_score(
         match_score,
         match,
         session
     )
     if (await is_round_ended(match.round, tournament, session)):
-        winners = await get_round_winners(match.round, tournament, session)
+        winners: list[User] = await get_round_winners(match.round, tournament, session)
         if len(winners) == 1:
-            await end_tournament(winners[0].id, tournament, session)
+            await crud.end_tournament(winners[0], tournament, session)
         await create_matches(winners, match.round+1, tournament, session)
 
     return MatchBase.model_validate(match)
