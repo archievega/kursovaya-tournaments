@@ -62,7 +62,9 @@ const Registration = () => {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     />
                     <button type="button" onClick={handleSubmit}>create</button>
-                    <p className="message">Already registered? <a href="/Login">Sign In</a></p>
+                    <p className="message">Уже есть аккаунт? 
+                        <span onClick={() => navigate('/login')} style={{ color: 'green', cursor: 'pointer' }}>Войти</span>
+                    </p>
                 </form>
             </div>
         </div>

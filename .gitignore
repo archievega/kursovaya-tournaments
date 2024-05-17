@@ -161,3 +161,4 @@ supabase/
 #.idea/
 node_modules/
 build/
+poetry.lock

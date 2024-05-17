@@ -54,9 +54,7 @@ const Login = () => {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     />
                     <button type="submit">login</button>
-                    <p className="message">
-                        Не зарегистрированы? <a href="/registration">Создать аккаунт</a>
-                    </p>
+                    <p className="message">Не зарегистрированы? <span onClick={() => navigate('/registration')} style={{ color: 'green', cursor: 'pointer' }}>Создать аккаунт</span></p>
                 </form>
             </div>
         </div>
