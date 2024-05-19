@@ -1,14 +1,18 @@
-FROM python:3.11
+FROM python:3.11-slim
 
-WORKDIR /opt/app
+ENV PYTHONUNBUFFERED=1
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONBUFFERED 1
+WORKDIR /app
 
-COPY requirements.txt .
+COPY pyproject.toml poetry.lock /app/
 
-RUN pip install -r requirements.txt
+RUN pip install poetry
 
-COPY . .
+RUN poetry install --no-root
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "1234"]
+COPY ./docker.env /app/
+
+COPY . /app
+
+
+CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

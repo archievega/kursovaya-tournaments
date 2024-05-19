@@ -1,5 +1,5 @@
 import uuid
-from fastapi import Depends, Response
+from fastapi import Depends, Response, status
 from fastapi.responses import JSONResponse
 from fastapi_users import (
     BaseUserManager,
@@ -19,19 +19,17 @@ from fastapi_users.authentication import (
 from fastapi_users.authentication.strategy import Strategy
 from fastapi_users.types import DependencyCallable
 from fastapi_users.db import SQLAlchemyUserDatabase
-from pydantic import BaseModel
+from fastapi_users.openapi import OpenAPIResponseType
 
 from src.auth.models import User
 from src.auth.schemas import UserCreate, BearerResponseRefresh
 from src.auth.utils import get_user_db
 
-
-SECRET = "somesecret"
-
+from src.config import settings
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
-    reset_password_token_secret = SECRET
-    verification_token_secret = SECRET
+    reset_password_token_secret = settings.JWT_SECRET
+    verification_token_secret = settings.JWT_SECRET
 
     async def validate_password(
         self,
@@ -62,27 +60,55 @@ class BearerTransportRefresh(BearerTransport):
             user_id=str(user_id), 
             token_type="bearer"
         )
-        return JSONResponse(bearer_response.model_dump())
+        return bearer_response
+    
+    @staticmethod
+    def get_openapi_login_responses_success() -> OpenAPIResponseType:
+        return {
+            status.HTTP_200_OK: {
+                "model": BearerResponseRefresh,
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1"
+                            "c2VyX2lkIjoiOTIyMWZmYzktNjQwZi00MzcyLTg2Z"
+                            "DMtY2U2NDJjYmE1NjAzIiwiYXVkIjoiZmFzdGFwaS"
+                            "11c2VyczphdXRoIiwiZXhwIjoxNTcxNTA0MTkzfQ."
+                            "M10bjOe45I5Ncu_uXvOmVV8QxnL-nZfcH96U90JaocI",
+                            "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1"
+                            "c2VyX2lkIjoiOTIyMWZmYzktNjQwZi00MzcyLTg2Z"
+                            "DMtY2U2NDJjYmE1NjAzIiwiYXVkIjoiZmFzdGFwaS"
+                            "11c2VyczphdXRoIiwiZXhwIjoxNTcxNTA0MTkzfQ."
+                            "M10bjOe45I5Ncu_uXvOmVV8QxnL-nZfcH96U90JaocI",
+                            "token_type": "bearer",
+                        }
+                    }
+                },
+            },
+        }
 
-bearer_transport = BearerTransportRefresh(tokenUrl="api/v1/auth/login")
+bearer_transport = BearerTransportRefresh(tokenUrl="auth/login")
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=300)
+    return JWTStrategy(secret=settings.JWT_SECRET, lifetime_seconds=300)
 
 def get_refresh_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=259200)
+    return JWTStrategy(secret=settings.JWT_SECRET, lifetime_seconds=259200)
 
 
 class AuthenticationBackendRefresh(AuthenticationBackend):
     def __init__(
             self,
-            *args,
-            get_refresh_strategy: DependencyCallable[Strategy[models.UP, models.ID]],
-            **kwargs
+            name: str,
+            transport: BearerTransportRefresh,
+            get_strategy: DependencyCallable[Strategy[models.UP, models.ID]],
+            get_refresh_strategy: DependencyCallable[Strategy[models.UP, models.ID]]
     ):
-        super().__init__(*args, **kwargs)
+        self.name = name
+        self.get_strategy = get_strategy
         self.get_refresh_strategy = get_refresh_strategy
+        self.transport = transport
 
     async def login(
             self,

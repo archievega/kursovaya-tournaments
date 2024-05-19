@@ -1,6 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 from fastapi import APIRouter, Depends, HTTPException, status
+
 
 from src.database import get_async_session
 
@@ -135,10 +137,12 @@ async def create_matches(
         ) 
 
 
-@router.get("/")
+@router.get(
+        "/",
+        response_model=list[TournamentBase]
+)
 async def get_tournaments(
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_active_user)
+    session: AsyncSession = Depends(get_async_session)
 ):
     tournaments = await crud.get_tournaments(session)
     tournament_schemas = [TournamentBase.model_validate(tournament) for tournament in tournaments]      
@@ -257,8 +261,7 @@ async def leave(
         response_model=TournamentSchema
 )
 async def get_matches(
-    tournament: Tournament = Depends(valid_tournament),
-    session: AsyncSession = Depends(get_async_session)  
+    tournament: Tournament = Depends(valid_tournament) 
 ):
     return TournamentSchema.model_validate(tournament)
 

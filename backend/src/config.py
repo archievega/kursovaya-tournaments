@@ -8,18 +8,22 @@ BASE_DIR = Path(__file__).parent.parent
 class Settings(BaseSettings):
     DEBUG: bool = True
 
-    DB_HOST: str = "localhost"
+    DB_HOST: str
 
-    DB_PORT: str = "5432"
+    DB_PORT: str
 
-    DB_NAME: str = "postgres"
+    DB_NAME: str
 
-    DB_USER: str = "username"
+    DB_USER: str
 
-    DB_PASS: str = "password"
+    DB_PASS: str
+
+    JWT_SECRET: str
+
+    BASE_URL: str = "http://localhost:1234"
 
     class Config:
-        env_file = ".env"
+        env_file = "docker.env"
 
     @property
     def db_url_postgresql(self) -> str:
