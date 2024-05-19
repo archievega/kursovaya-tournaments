@@ -9,7 +9,7 @@ from src.auth.routers import router as auth_router
 
 
 app = FastAPI(
-    title="GlukoSports",
+    title="Kursach",
     routes=[
         Mount(
             "/static",

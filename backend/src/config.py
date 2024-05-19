@@ -1,11 +1,13 @@
 from pathlib import Path
 
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).parent.parent
 
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file = "docker.env")
     DEBUG: bool = True
 
     DB_HOST: str
@@ -21,9 +23,8 @@ class Settings(BaseSettings):
     JWT_SECRET: str
 
     BASE_URL: str = "http://localhost:1234"
+    TEST_DB_NAME: str = "test"
 
-    class Config:
-        env_file = "docker.env"
 
     @property
     def db_url_postgresql(self) -> str:

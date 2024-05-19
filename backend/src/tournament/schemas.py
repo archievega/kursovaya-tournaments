@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, UUID4
+from pydantic import BaseModel, Field, UUID4, ConfigDict
 from datetime import date
 
 from src.tournament.models import Tournament as TournamentModel
@@ -8,12 +8,12 @@ from src.auth.schemas import PublicUser
 
 
 class TournamentUser(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     player: PublicUser
-    class Config:
-        from_attributes = True
 
 
 class TournamentBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID4
     title: str
     starts_at: date
@@ -21,10 +21,9 @@ class TournamentBase(BaseModel):
     status: TournamentStatus
     winner: PublicUser | None = None
 
-    class Config:
-        from_attributes = True
 
 class MatchBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID4
     player_1: PublicUser | None = None
     player_1_scores: int = Field(ge=0, default=0)
@@ -32,9 +31,6 @@ class MatchBase(BaseModel):
     player_2: PublicUser | None = None
     round: int
     winner: PublicUser | None = None
-
-    class Config:
-        from_attributes = True
 
 
 class Tournament(TournamentBase):

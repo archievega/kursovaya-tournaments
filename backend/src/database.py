@@ -1,13 +1,11 @@
 from sqlalchemy.orm import DeclarativeBase
 from collections.abc import AsyncGenerator
-from sqlalchemy import MetaData
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from src.config import settings
 
-base_metadata = MetaData(schema="public")
 
 class Base(DeclarativeBase):
     pass

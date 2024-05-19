@@ -1,15 +1,14 @@
 from uuid import UUID
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel, UUID4, ConfigDict 
 
 from fastapi_users import schemas
 
 
 class PublicUser(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID4
     username: str
     scores: int = 0
-    class Config:
-        from_attributes = True
 
 
 class BearerResponseRefresh(BaseModel):
